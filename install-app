@@ -137,6 +137,9 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+25-Aug-2004, v2.21, George A. Theall
+    o Changed C<warn> back to C<print STDERR> for prompts.
+
 20-Aug-2004, v2.20, George A. Theall
     o Changed the bang-path to use C</usr/bin/perl> rather than
       C</usr/local/bin/perl>.
@@ -221,7 +224,7 @@ my $proxy = '';
 $| = 1;
 $ENV{'FTP_PASSIVE'} = 0;                # change to 1 if passive mode needed
 my $timeout = 120;                      # timeout used w/ http GET
-my $useragent = 'install-app/2.20' .    # used when requesting applications
+my $useragent = 'install-app/2.21' .    # used when requesting applications
                     ' (http://www.tifaware.com/perl/install-app/)';
 my $work_uid = 0;                       # uid for work files / dirs
 my $work_gid = 0;                       # gid for work files / dirs
@@ -579,7 +582,7 @@ while (@ARGV) {
                 my $ans;
                 warn "debug:     doing preextract actions '$cmd'.\n" if $DEBUG;
                 unless ($options{batch}) {
-                    warn "Run '$cmd' (Y/n/b/q)? ";
+                    print STDERR "Run '$cmd' (Y/n/b/q)? ";
                     $ans = <STDIN>;
                     exit if ($ans =~ /^q$/i);
                 }
@@ -617,7 +620,7 @@ while (@ARGV) {
                 join("", @files), 
                 "\n";
             unless ($options{batch}) {
-                warn "Extract files (Y/n)? ";
+                print STDERR "Extract files (Y/n)? ";
                 my $ans = <STDIN>;
                 exit if ($ans =~ /^n$/i);
             }
@@ -631,7 +634,7 @@ while (@ARGV) {
                 my $ans;
                 warn "debug:     doing postextract actions '$cmd'.\n" if $DEBUG;
                 unless ($options{batch}) {
-                    warn "Run '$cmd' (Y/n/b/q)? ";
+                    print STDERR "Run '$cmd' (Y/n/b/q)? ";
                     $ans = <STDIN>;
                     exit if ($ans =~ /^q$/i);
                 }
@@ -661,7 +664,7 @@ while (@ARGV) {
             while (($desc, $cmd) = each %$step) {
                 warn "debug:     running '$cmd' ($desc).\n" if $DEBUG;
                 unless ($options{batch}) {
-                    warn "$desc (Y/n/b/q)? ";
+                    print STDERR "$desc (Y/n/b/q)? ";
                     my $ans = <STDIN>;
                     next if ($ans =~ /^n$/i);
                     exit if ($ans =~ /^q$/i);
