@@ -2,7 +2,7 @@
 <?xml-stylesheet type="text/xml" href="app.xsl"?>
 
 <!--
-updated: 23-Jun-2003, George A. Theall
+updated: 30-Sep-2003, George A. Theall
 -->
 
 <app>
@@ -19,10 +19,6 @@ updated: 23-Jun-2003, George A. Theall
         <step>
             <label>View changelog</label>
             <action>if [ "X${INSTALL_APP_MODE}" != "Xbatch" ]; then less Changes; fi</action>
-        </step>
-        <step>
-            <label>Clean up cruft</label>
-            <action>rm config.sh Policy.sh</action>
         </step>
         <step>
             <label>Configure</label>

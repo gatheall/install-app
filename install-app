@@ -136,6 +136,11 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+27-Jun-2003, 2.10, George A. Theall
+    o Added support for %b (basedir) encoding.
+    o Added support for preextract element for command(s) to be
+      run before extracting a distribution file.
+
 23-Jun-2003, 2.00, George A. Theall
     o Changed major portions of code.
     o Redesigned code to read from application-specific XML files.
@@ -202,7 +207,7 @@ my $proxy = '';
 $| = 1;
 $ENV{'FTP_PASSIVE'} = 0;                # change to 1 if passive mode needed
 my $timeout = 120;                      # timeout used w/ http GET
-my $useragent = 'install-app/2.00' .    # used when requesting applications
+my $useragent = 'install-app/2.10' .    # used when requesting applications
                     ' (http://www.tifaware.com/perl/install-app/)';
 my $work_uid = 0;                       # uid for work files / dirs
 my $work_gid = 0;                       # gid for work files / dirs
@@ -320,7 +325,7 @@ while (@ARGV) {
         # - selected scalars.
         #   nb: order is important first since some strings
         #       may end up encoded in others.
-        foreach my $tag ('name', 'distfile', 'workdir', 'basedir', 'durl', 'postextract', 'verify', 'vurl') {
+        foreach my $tag ('name', 'distfile', 'workdir', 'basedir', 'durl', 'preextract', 'postextract', 'verify', 'vurl') {
             my $val;
             if ($twig->children_count($tag)) {
                 $val = $twig->first_child($tag)->text;
@@ -336,6 +341,7 @@ while (@ARGV) {
                 if ($val =~ /%/) {
                     warn "debug:       $tag = '$val' (before)\n" if $DEBUG;
                     $val =~ s/%a/$app_name/g;
+                    $val =~ s/%b/$info->{basedir}/g;
                     $val =~ s/%f/$info->{distfile}/g;
                     $val =~ s/%n/$info->{name}/g;
                     $val =~ s/%v/$app_vers/g;
@@ -353,6 +359,7 @@ while (@ARGV) {
             if ($label =~ /%/) {
                 warn "debug:       label = '$label' (before)\n" if $DEBUG;
                 $label =~ s/%a/$app_name/g;
+                $label =~ s/%b/$info->{basedir}/g;
                 $label =~ s/%f/$info->{distfile}/g;
                 $label =~ s/%n/$info->{name}/g;
                 $label =~ s/%v/$app_vers/g;
@@ -362,6 +369,7 @@ while (@ARGV) {
             if ($action =~ /%/) {
                 warn "debug:           action = '$action' (before)\n" if $DEBUG;
                 $action =~ s/%a/$app_name/g;
+                $action =~ s/%b/$info->{basedir}/g;
                 $action =~ s/%f/$info->{distfile}/g;
                 $action =~ s/%n/$info->{name}/g;
                 $action =~ s/%v/$app_vers/g;
@@ -535,6 +543,24 @@ while (@ARGV) {
             warn "Note: $info->{workdir} already exists; $distfile not extracted.\n";
         }
         else {
+            # Do any pretextract actions.
+            if (exists $info->{preextract}) {
+                my $cmd = $info->{preextract};
+                my $ans;
+                warn "debug:     doing preextract actions '$cmd'.\n" if $DEBUG;
+                unless ($options{batch}) {
+                    print STDERR "Run '$cmd' (Y/n/q)? ";
+                    $ans = <STDIN>;
+                    exit if ($ans =~ /^q$/i);
+                }
+                unless (defined($ans) and $ans =~ /^n$/i) {
+                    system $cmd;
+                    my $rc = $? >> 8;
+                    croak "Preextract actions '$cmd' failed ($rc)!\n" if ($rc);
+                }
+            }
+
+            # Extract file.
             warn "debug:     extracting distribution file.\n" if $DEBUG;
             my $uncompress;
             if ($distfile =~ /\.(tar\.gz|tgz|Z)$/) {

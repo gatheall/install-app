@@ -11,6 +11,14 @@
 <!--#endif -->
 
 
+<H4 ALIGN="center">
+   <A HREF="/">TifaWARE</A> |
+   <A HREF="../">Perl Programs</A> |
+   install-app
+</H4>
+                                                                                
+                                                                                
+<HR>
 <H2>install-app</H2>
 
 <H3>Introduction</H3>
@@ -28,7 +36,7 @@ package managers is that <B>install-app</B> does not itself support
 dependencies among applications or application removals.]</P>
 
 <P><B>install-app</B> requires Perl 5 along with the following
-modules:</P>
+Perl modules:</P>
 
 <UL>
    <LI><CODE>Carp</CODE></LI>
@@ -121,6 +129,13 @@ application info file along with the meaning of each:</P>
          signature for the distribution file.<BR></TD>
    </TR>
    <TR>
+      <TH ALIGN="left"><CODE>install/preextract</CODE> </TH>
+      <TD>Command(s) run before extracting contents of the distribution 
+         file.  These are passed to the shell for execution. <B>Note:</B> 
+         if they exit with a non-zero return code, <B>install-app</B> 
+         will regard that as a failure and abort.<BR></TD>
+   </TR>
+   <TR>
       <TH ALIGN="left"><CODE>install/postextract</CODE> </TH>
       <TD>Command(s) run after extracting contents of the distribution 
          file but before changing ownership of the working directory
@@ -167,6 +182,10 @@ strings:</P>
       <TD>Name of the application as specified on the commandline.<BR></TD>
    </TR>
    <TR>
+      <TH ALIGN="center"><CODE>%b</CODE> </TH>
+      <TD>The text of the <CODE>basedir</CODE> element.<BR></TD>
+   </TR>
+   <TR>
       <TH ALIGN="center"><CODE>%f</CODE> </TH>
       <TD>The text of the <CODE>distfile</CODE> element.<BR></TD>
    </TR>
@@ -189,10 +208,10 @@ strings:</P>
 <H3>Installation</H3>
 
 <OL>
-   <LI>Retrieve the script <A HREF="install-app">install-app</A>
+   <LI>Retrieve the script <A HREF="/code/install-app/install-app">install-app</A>
       and save it locally.  You may also wish to verify its
-      <A HREF="install-app.md5">MD5 checksum</A> or, better, its
-      <A HREF="install-app.asc">GPG signature</A> against
+      <A HREF="/code/install-app/install-app.md5">MD5 checksum</A> or, better, its
+      <A HREF="/code/install-app/install-app.asc">GPG signature</A> against
       <A HREF="/~theall/gpg.html">my current GPG key</A>.</LI>
    <LI>Create an application info file for each application you wish
       to have <B>install-app</B> support.  Some examples are:
@@ -233,7 +252,7 @@ variables defined in the script itself:</P>
 <BLOCKQUOTE>
 <DL>
    <DT>-b, --batch</DT>
-   <DD>Don't ask questions. NB:you may still be prompted by the 
+   <DD>Don't ask questions. NB: you may still be prompted by the 
       programs you are actually running.</DD>
 
    <DT>-d, --debug</DT>
@@ -318,10 +337,22 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Notes<BR></TH>
    </TR>
    <TR>
+      <TH ALIGN="left" VALIGN="top">27-Jun-2003 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-2.10">2.10</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-2.10.md5">MD5</A> / 
+         <A HREF="/code/install-app/install-app-2.10.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Added support for <CODE>%b</CODE> (basedir) encoding.</LI>
+         <LI>Added support for <CODE>preextract</CODE> element for 
+            command(s) to be run before extracting a distribution file.</LI>
+      </UL></TD>
+   </TR>
+   <TR>
       <TH ALIGN="left" VALIGN="top">23-Jun-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-2.00">2.00</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-2.00.md5">MD5</A> / 
-         <A HREF="install-app-2.00.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-2.00">2.00</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-2.00.md5">MD5</A> / 
+         <A HREF="/code/install-app/install-app-2.00.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Changed major portions of code.</LI>
@@ -345,9 +376,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">25-Apr-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-1.02">1.02</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-1.02.md5">MD5</A> / 
-         <A HREF="install-app-1.02.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-1.02">1.02</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-1.02.md5">MD5</A> / 
+         <A HREF="/code/install-app/install-app-1.02.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Fixed glitch that prevented listing of steps of 
@@ -357,9 +388,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">02-Apr-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-1.01">1.01</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-1.01.md5">MD5</A> / 
-         <A HREF="install-app-1.01.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-1.01">1.01</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-1.01.md5">MD5</A> / 
+         <A HREF="/code/install-app/install-app-1.01.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Fixed glitch with use of an uninitialized value when 
@@ -372,9 +403,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">21-Mar-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-1.00">1.00</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-1.00.md5">MD5</A> / 
-         <A HREF="install-app-1.00.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-1.00">1.00</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-1.00.md5">MD5</A> / 
+         <A HREF="/code/install-app/install-app-1.00.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Initial version.</LI>
@@ -382,6 +413,15 @@ it under the same terms as Perl itself.</P>
    </TR>
 </TABLE>
 </CENTER>
+
+
+<HR>
+<H4 ALIGN="center">
+   <A HREF="/">TifaWARE</A> |
+   <A HREF="../">Perl Programs</A> |
+   install-app
+</H4>
+
 
 <!--#include virtual="/footer.html" -->
 <!--#if expr="$weblint" -->
