@@ -1,23 +1,23 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/perl -w
 
 
 =head1 NAME
 
-install-app - Install applications from source.
+install-app - Install applications.
 
 
 =head1 SYNOPSIS
 
-  # Retrieve / build / install OpenSSL 0.9.7a.
+  # retrieves / builds / installs OpenSSL 0.9.7a.
   install-app openssl 0.9.7a
 
   # same as above but do it in batch.
   install-app -b openssl 0.9.7a
 
-  # List steps involved in building / installing OpenSSL 0.9.7a.
+  # lists steps involved in building / installing OpenSSL 0.9.7a.
   install-app -l openssl 0.9.7a
 
-  # List supported applications.
+  # lists supported applications.
   install-app --list-apps
 
 
@@ -65,7 +65,7 @@ Some of the other settings you may wish to adjust include:
                                                 install the application but
                                                 don't actually do them.
 
-install-app requires Perl 5 along with the following modules:
+B<install-app> requires Perl 5 along with the following modules:
 
     o Carp
     o File::Find
@@ -117,7 +117,8 @@ Fatal errors will be reported using croak.
 
 =head1 SEE ALSO
 
-L<perl(1)>.
+L<http://www.tifaware.com/perl/lsappi/>,
+L<http://www.tifaware.com/perl/install-app/>,
 
 
 =head1 AUTHOR
@@ -127,7 +128,7 @@ George A. Theall, E<lt>theall@tifaware.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2003, George A. Theall.
+Copyright (c) 2003 - 2004, George A. Theall.
 All rights reserved.
 
 This script is free software; you can redistribute it and/or modify
@@ -135,6 +136,20 @@ it under the same terms as Perl itself.
 
 
 =head1 HISTORY
+
+20-Aug-2004, v2.20, George A. Theall
+    o Changed the bang-path to use C</usr/bin/perl> rather than
+      C</usr/local/bin/perl>.
+    o Changed default PATH to include C</sbin>, C</usr/sbin> and
+      C</usr/local/sbin>.
+    o Changed C<print STDERR> to C<warn> throughout the script.
+    o Changed the usage message.
+    o Changed fallback of FTP transfers to passive mode in the event
+      of 404 code as well as 400.
+    o Added subroutine prototypes.
+    o Added code to display the usage message if option parsing fails.
+    o Added support for enabling batch mode for remaining steps while
+      at a prompt.
 
 27-Jun-2003, 2.10, George A. Theall
     o Added support for %b (basedir) encoding.
@@ -177,8 +192,7 @@ it under the same terms as Perl itself.
 
 ############################################################################
 # Make sure we have access to the required modules.
-require 5;
-
+use 5;
 use strict;
 use Carp;
 use File::Find;
@@ -192,7 +206,7 @@ use XML::Twig;
 # 
 # - these you may wish to tweak.
 delete @ENV{qw(IFS CDPATH ENV BASH_ENV)};   # Make %ENV safer
-$ENV{PATH} = '/bin:/usr/bin:/usr/local/bin';
+$ENV{PATH} = '/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin';
 my $DEBUG = 0;                          # debugging messages?
 my $apps_dir = '/usr/local/etc/apps';   # where application information is stored
 # nb: sample http proxy settings
@@ -207,11 +221,14 @@ my $proxy = '';
 $| = 1;
 $ENV{'FTP_PASSIVE'} = 0;                # change to 1 if passive mode needed
 my $timeout = 120;                      # timeout used w/ http GET
-my $useragent = 'install-app/2.10' .    # used when requesting applications
+my $useragent = 'install-app/2.20' .    # used when requesting applications
                     ' (http://www.tifaware.com/perl/install-app/)';
 my $work_uid = 0;                       # uid for work files / dirs
 my $work_gid = 0;                       # gid for work files / dirs
 umask 022;
+
+# Subroutine prototypes.
+sub retrieve_URL($$);
 
 
 ############################################################################
@@ -224,14 +241,27 @@ GetOptions(
     \%options,
     'batch|b!',
     'debug|d!',
-    'help|?!',
+    'help|h|?!',
     'list-apps|a!',
     'list-steps|l!',
-);
-if ($options{help} or scalar(@ARGV) % 2) {
-    print STDERR "Usage: $0 [-b|--batch] [-d|--debug] [-l|--list-steps] application1 version1 [application2 version2 ...]\n",
-                 "  or\n",
-                 "       $0 [-d|--debug] -a|--list-apps\n";
+) or $options{help} = 1;
+$options{help} = 1 if (scalar(@ARGV) % 2);
+$0 =~ s/^.+\///;
+if ($options{help}) {
+    warn "\n",
+        "Usage: $0 [options] application1 version1 [application2 version2 ...]\n",
+        "\n",
+        "Options:\n",
+        "  -?, -h, --help             Display this help and exit.\n",
+        "  -a, --list-apps            List the applications supported on this system\n",
+        "                               and exit.\n",
+        "  -b, --batch                Don't ask questions. NB: you may still be\n",
+        "                               prompted by the programs you are actually\n",
+        "                               running.\n",
+        "  -d, --debug                Display debugging messages while running. NB:\n",
+        "                               installs still occur.\n",
+        "  -l, --list-steps           List the steps to make and install the\n",
+        "                               application but don't actually do them.\n";
     exit(9);
 }
 $ENV{'INSTALL_APP_MODE'} = ($options{batch}) ? 'batch' : 'interactive';
@@ -242,12 +272,12 @@ chdir $apps_dir or croak "Can't change directory to '$apps_dir' - $!\n";
 ############################################################################
 # List applications if desired and exit.
 if ($options{'list-apps'}) {
-    print STDERR "debug: scanning files in '$apps_dir':\n" if $DEBUG;
+    warn "debug: scanning files in '$apps_dir':\n" if $DEBUG;
     my @apps;
     find(
         { wanted => sub {
                 if ($File::Find::dir eq '.' and /^\.\/(.+)\.xml$/) {
-                    print STDERR "debug:   $1.xml\n" if $DEBUG;
+                    warn "debug:   $1.xml\n" if $DEBUG;
                     push(@apps, $1);
                 }
             },
@@ -431,7 +461,7 @@ while (@ARGV) {
             if (!($url = $info->{durl})) {
                 croak "$distfile not found in $info->{basedir} and durl not configured!\n";
             }
-            if ($_ = &retrieve_URL($url, $distfile)) {
+            if ($_ = retrieve_URL($url, $distfile)) {
                 croak "Can't retrieve '$url' - $_!\n";
             }
         }
@@ -447,7 +477,7 @@ while (@ARGV) {
                 if (!-f $md5) {
                     warn "debug:       $md5 does not exist locally.\n" if $DEBUG;
                     if (exists $info->{vurl}) {
-                        if ($_ = &retrieve_URL($info->{vurl}, $md5)) {
+                        if ($_ = retrieve_URL($info->{vurl}, $md5)) {
                             # nb: give user chance to continue.
                             warn "Note: can't retrieve '$info->{vurl}' - $_.\n";
                         }
@@ -479,7 +509,7 @@ while (@ARGV) {
                         if ($options{batch}) {
                             croak "Can't validate $distfile!\n";
                         }
-                        print STDERR "\nEnter MD5 checksum for $distfile: ";
+                        warn "\nEnter MD5 checksum for $distfile: ";
                         my $ans = <STDIN>;
                         chomp $ans;
                         open(MD5, ">$md5") or croak "Can't write to $md5 - $!\n";
@@ -502,7 +532,7 @@ while (@ARGV) {
                 if (!-f $sig) {
                     warn "debug:       $sig does not exist locally.\n" if $DEBUG;
                     if (exists $info->{vurl}) {
-                        if ($_ = &retrieve_URL($info->{vurl}, $sig)) {
+                        if ($_ = retrieve_URL($info->{vurl}, $sig)) {
                             # nb: give user chance to continue.
                             warn "Note: can't retrieve '$info->{vurl}' - $_.\n";
                         }
@@ -513,7 +543,7 @@ while (@ARGV) {
                         if ($options{batch}) {
                             croak "Can't validate $distfile!\n";
                         }
-                        print STDERR "Enter GnuPG / PGP signature for $distfile: ";
+                        warn "Enter GnuPG / PGP signature for $distfile: ";
                         my $ans = <STDIN>;
                         chomp $ans;
                         open(SIG, ">$sig") or croak "Can't write to $sig - $!\n";
@@ -549,9 +579,13 @@ while (@ARGV) {
                 my $ans;
                 warn "debug:     doing preextract actions '$cmd'.\n" if $DEBUG;
                 unless ($options{batch}) {
-                    print STDERR "Run '$cmd' (Y/n/q)? ";
+                    warn "Run '$cmd' (Y/n/b/q)? ";
                     $ans = <STDIN>;
                     exit if ($ans =~ /^q$/i);
+                }
+                if ($ans =~ /^b$/i) {
+                    $options{batch} = 1;
+                    $ENV{'INSTALL_APP_MODE'} = 'batch';
                 }
                 unless (defined($ans) and $ans =~ /^n$/i) {
                     system $cmd;
@@ -583,7 +617,7 @@ while (@ARGV) {
                 join("", @files), 
                 "\n";
             unless ($options{batch}) {
-                print STDERR "Extract files (Y/n)? ";
+                warn "Extract files (Y/n)? ";
                 my $ans = <STDIN>;
                 exit if ($ans =~ /^n$/i);
             }
@@ -597,9 +631,13 @@ while (@ARGV) {
                 my $ans;
                 warn "debug:     doing postextract actions '$cmd'.\n" if $DEBUG;
                 unless ($options{batch}) {
-                    print STDERR "Run '$cmd' (Y/n/q)? ";
+                    warn "Run '$cmd' (Y/n/b/q)? ";
                     $ans = <STDIN>;
                     exit if ($ans =~ /^q$/i);
+                }
+                if ($ans =~ /^b$/i) {
+                    $options{batch} = 1;
+                    $ENV{'INSTALL_APP_MODE'} = 'batch';
                 }
                 unless (defined($ans) and $ans =~ /^n$/i) {
                     system $cmd;
@@ -623,10 +661,14 @@ while (@ARGV) {
             while (($desc, $cmd) = each %$step) {
                 warn "debug:     running '$cmd' ($desc).\n" if $DEBUG;
                 unless ($options{batch}) {
-                    print STDERR "$desc (Y/n/q)? ";
+                    warn "$desc (Y/n/b/q)? ";
                     my $ans = <STDIN>;
                     next if ($ans =~ /^n$/i);
                     exit if ($ans =~ /^q$/i);
+                    if ($ans =~ /^b$/i) {
+                        $options{batch} = 1;
+                        $ENV{'INSTALL_APP_MODE'} = 'batch';
+                    }
                 }
                 system $cmd;
                 my $rc = $? >> 8;
@@ -681,13 +723,13 @@ while (@ARGV) {
 
 
 ############################################################################
-# Retrieve $url and save it as $url.
+# Retrieve $url and save it as $file.
 #    Returns an empty string on success or an error message on failure.
-sub retrieve_URL {
+sub retrieve_URL($$) {
     my($url, $file) = @_;
 
     if ($DEBUG) {
-        print STDERR "debug: retrieving $url in retrieve_URL.\n";
+        warn "debug: retrieving $url in retrieve_URL.\n";
         require LWP::Debug; import LWP::Debug qw(+);
     }
 
@@ -703,8 +745,12 @@ sub retrieve_URL {
         ':content_file' => $file,
     );
     # Retry FTP retrievals in passive mode if it looks like that will help.
-    if ($response->code == 400 and $url =~ /^ftp:/ and $ENV{'FTP_PASSIVE'} == 0 and $response->message =~ /502/) {
-        print STDERR "debug: retrying transfer with passive mode in retrieve_URL.\n" if $DEBUG;
+    #
+    # nb: 404 generally means the file wasn't found although this also 
+    #     happens with Libra FTP daemon 1.2 20010113 accepting only 
+    #     passive connections (eg, on ftp.namesys.com). :-(
+    if (grep($response->code == $_, (400,404)) and $url =~ /^ftp:/ and $ENV{'FTP_PASSIVE'} == 0) {
+        warn "debug: retrying transfer with passive mode in retrieve_URL.\n" if $DEBUG;
         $ENV{'FTP_PASSIVE'} = 1;
         $response = $ua->get(
             $url,
@@ -715,7 +761,6 @@ sub retrieve_URL {
     unless ($response->is_success) {
         return $response->status_line;
     }
-    print STDERR "debug: saved contents as '$file' in retrieve_URL.\n" if $DEBUG;
+    warn "debug: saved contents as '$file' in retrieve_URL.\n" if $DEBUG;
     return "";
 }
-

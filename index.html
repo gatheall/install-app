@@ -251,15 +251,15 @@ variables defined in the script itself:</P>
 
 <BLOCKQUOTE>
 <DL>
+   <DT>-a, --list-apps</DT>
+   <DD>List the applications supported on this system and exit.</DD>
+
    <DT>-b, --batch</DT>
    <DD>Don't ask questions. NB: you may still be prompted by the 
       programs you are actually running.</DD>
 
    <DT>-d, --debug</DT>
    <DD>Display debugging messages while running.  NB: installs still occur.</DD>
-
-   <DT>-a, --list-apps</DT>
-   <DD>List the applications supported on this system and exit.</DD>
 
    <DT>-l, --list-steps</DT>
    <DD>List the steps to make and install the application but don't actually 
@@ -271,16 +271,16 @@ variables defined in the script itself:</P>
 <BLOCKQUOTE>
 <DL>
    <DT><CODE>install-app openssl 0.9.7a</CODE></DT>
-   <DD>Retrieve / build / install OpenSSL 0.9.7a.</DD>
+   <DD>retrieves / builds / installs OpenSSL 0.9.7a.</DD>
 
    <DT><CODE>install-app -b openssl 0.9.7a</CODE></DT>
-   <DD>Same as above but do it in batch.</DD>
+   <DD>same as above but do it in batch.</DD>
 
    <DT><CODE>install-app -l openssl 0.9.7a</CODE></DT>
-   <DD>List steps involved in building / installing OpenSSL 0.9.7a.</DD>
+   <DD>lists steps involved in building / installing OpenSSL 0.9.7a.</DD>
 
    <DT><CODE>install-app --list-apps</CODE></DT>
-   <DD>List supported applications.</DD>
+   <DD>lists supported applications.</DD>
 </DL>
 </BLOCKQUOTE>
 
@@ -319,7 +319,7 @@ enable you to resolve the problem yourself.</P>
 
 <H3>Copyright and License</H3>
 
-<P>Copyright (c) 2003, George A. Theall.<BR>
+<P>Copyright (c) 2003 - 2004, George A. Theall.<BR>
 All rights reserved.</P>
 
 <P>This script is free software; you can redistribute it and/or modify
@@ -335,6 +335,29 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">20-Aug-2004 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-2.20">2.20</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/install-app/install-app-2.20.md5">MD5</A> / 
+         <A HREF="/code/install-app/install-app-2.20.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Changed the bang-path to use <CODE>/usr/bin/perl</CODE> rather 
+            than <CODE>/usr/local/bin/perl</CODE>.</LI>
+         <LI>Changed default PATH to include <CODE>/sbin</CODE>,
+            <CODE>/usr/sbin</CODE>, and <CODE>/usr/local/sbin</CODE>.</LI>
+         <LI>Changed <CODE>print STDERR</CODE> to <CODE>warn</CODE> 
+            throughout the script.</LI>
+         <LI>Changed the usage message.</LI>
+         <LI>Changed fallback of FTP transfers to passive mode in the event of
+            404 code as well as 400.</LI>
+         <LI>Added subroutine prototypes.</LI>
+         <LI>Added code to display the usage message if option parsing 
+            fails.</LI>
+         <LI>Added support for enabling batch mode for remaining steps while 
+            at a prompt.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">27-Jun-2003 </TH>
