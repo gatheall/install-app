@@ -110,6 +110,10 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+25-Apr-2003, George A. Theall
+    o Fixed glitch that prevented listing of steps of sub-applications.
+    o Improved formatting of output when listing steps.
+
 02-Apr-2003, George A. Theall
     o Fixed glitch with use of an uninitialized value when processing
       postextract commands while in batch mode.
@@ -147,7 +151,7 @@ my $proxy = '';                         # if you use a proxy for http
 $| = 1;
 $ENV{'FTP_PASSIVE'} = 0;                # change to 1 if passive mode needed
 my $timeout = 120;                      # timeout used w/ http GET
-my $useragent = 'install-app/1.10';     # used when requesting applications
+my $useragent = 'install-app/1.02';     # used when requesting applications
 my $work_uid = 0;                       # uid for work files / dirs
 my $work_gid = 0;                       # gid for work files / dirs
 umask 022;
@@ -257,18 +261,21 @@ while (@ARGV) {
 
             # List steps and exit if desired.
             if ($options{'list-steps'}) {
+                use Text::Wrap;
+                $Text::Wrap::columns = 75;
                 my $i = 0;
+                print "\n" unless ($application == $apps[0]);
                 print "Steps to install $name:\n\n";
                 foreach my $step (@{$info->{steps}}) {
                     my($desc, $cmd);
                     while (($desc, $cmd) = each %$step) {
-                        printf "%3d) %s by running '%s'.\n", ++$i, $desc, $cmd;
+                        print wrap('', '     ', 
+                            sprintf "%3d) %s by running '%s'.", ++$i, $desc, $cmd),
+                            "\n";
                     }
                 }
                 if (exists $info->{url}) {
-                    use Text::Wrap;
-                    $Text::Wrap::columns = 60;
-                    my $msg = "\nNote: $info->{distfile} will be retrieved from $info->{url} as necessary; ";
+                    my $msg = "Note: $info->{distfile} will be retrieved from $info->{url} as necessary; ";
                     if ($info->{verify}) {
                         $msg .= "it will be verified using a ";
                         $msg .= "MD5 checksum" if ($info->{verify} eq 'md5');
@@ -281,9 +288,10 @@ while (@ARGV) {
                     else {
                         $msg .= "no method is known for verifying its contents.";
                     }
-                    print wrap('', '', $msg), "\n";
+                    print "\n",
+                        wrap('', '', $msg), "\n";
                 }
-                exit;
+                next;
             }
 
             # Change into basedir, creating it as necessary.
