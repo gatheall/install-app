@@ -154,7 +154,7 @@ use XML::Twig;
 delete @ENV{qw(IFS CDPATH ENV BASH_ENV)};   # Make %ENV safer
 $ENV{PATH} = '/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin';
 my $DEBUG = 0;                          # debugging messages?
-my $apps_dir = '/usr/local/etc/apps';   # where application information is stored
+my $apps_dir = '/var/local/apps';       # where application information is stored
 # nb: sample http proxy settings
 #     - no proxy.
 my $proxy = '';
@@ -455,7 +455,7 @@ while (@ARGV) {
                         if ($options{batch}) {
                             croak "Can't validate $distfile!\n";
                         }
-                        warn "\nEnter MD5 checksum for $distfile: ";
+                        print STDERR "\nEnter MD5 checksum for $distfile: ";
                         my $ans = <STDIN>;
                         chomp $ans;
                         open(MD5, ">$md5") or croak "Can't write to $md5 - $!\n";
@@ -489,7 +489,7 @@ while (@ARGV) {
                         if ($options{batch}) {
                             croak "Can't validate $distfile!\n";
                         }
-                        warn "Enter GnuPG / PGP signature for $distfile: ";
+                        print STDERR "Enter GnuPG / PGP signature for $distfile: ";
                         my $ans = <STDIN>;
                         chomp $ans;
                         open(SIG, ">$sig") or croak "Can't write to $sig - $!\n";
@@ -529,7 +529,7 @@ while (@ARGV) {
                     $ans = <STDIN>;
                     exit if ($ans =~ /^q$/i);
                 }
-                if ($ans =~ /^b$/i) {
+                if (defined($ans) and $ans =~ /^b$/i) {
                     $options{batch} = 1;
                     $ENV{'INSTALL_APP_MODE'} = 'batch';
                 }
@@ -581,7 +581,7 @@ while (@ARGV) {
                     $ans = <STDIN>;
                     exit if ($ans =~ /^q$/i);
                 }
-                if ($ans =~ /^b$/i) {
+                if (defined($ans) and $ans =~ /^b$/i) {
                     $options{batch} = 1;
                     $ENV{'INSTALL_APP_MODE'} = 'batch';
                 }
@@ -611,7 +611,7 @@ while (@ARGV) {
                     my $ans = <STDIN>;
                     next if ($ans =~ /^n$/i);
                     exit if ($ans =~ /^q$/i);
-                    if ($ans =~ /^b$/i) {
+                    if (defined($ans) and $ans =~ /^b$/i) {
                         $options{batch} = 1;
                         $ENV{'INSTALL_APP_MODE'} = 'batch';
                     }
