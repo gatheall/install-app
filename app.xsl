@@ -2,6 +2,8 @@
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
+<xsl:comment>$Id$</xsl:comment>
+
 <xsl:output
  method="html" indent="yes" encoding="ISO-8859-1"
  doctype-public="-//W3C//DTD HTML 4.0 Transitional//EN"/>

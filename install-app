@@ -1,4 +1,17 @@
 #!/usr/bin/perl -w
+#
+# ----------------------------------------------------------------------
+# install-app
+#
+# Written by George A. Theall, theall@tifaware.com
+#
+# Copyright (c) 2003 - 2004, George A. Theall. All rights reserved.
+#
+# This module is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
+#
+# $Id$
+# ---------------------------------------------------------------------
 
 
 =head1 NAME
@@ -119,76 +132,6 @@ Fatal errors will be reported using croak.
 
 L<http://www.tifaware.com/perl/lsappi/>,
 L<http://www.tifaware.com/perl/install-app/>,
-
-
-=head1 AUTHOR
-
-George A. Theall, E<lt>theall@tifaware.comE<gt>
-
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (c) 2003 - 2004, George A. Theall.
-All rights reserved.
-
-This script is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
-
-
-=head1 HISTORY
-
-25-Aug-2004, v2.21, George A. Theall
-    o Changed C<warn> back to C<print STDERR> for prompts.
-
-20-Aug-2004, v2.20, George A. Theall
-    o Changed the bang-path to use C</usr/bin/perl> rather than
-      C</usr/local/bin/perl>.
-    o Changed default PATH to include C</sbin>, C</usr/sbin> and
-      C</usr/local/sbin>.
-    o Changed C<print STDERR> to C<warn> throughout the script.
-    o Changed the usage message.
-    o Changed fallback of FTP transfers to passive mode in the event
-      of 404 code as well as 400.
-    o Added subroutine prototypes.
-    o Added code to display the usage message if option parsing fails.
-    o Added support for enabling batch mode for remaining steps while
-      at a prompt.
-
-27-Jun-2003, 2.10, George A. Theall
-    o Added support for %b (basedir) encoding.
-    o Added support for preextract element for command(s) to be
-      run before extracting a distribution file.
-
-23-Jun-2003, 2.00, George A. Theall
-    o Changed major portions of code.
-    o Redesigned code to read from application-specific XML files.
-    o Added ability to bundle commandline options; eg, "-da" instead 
-      of "-d -a".
-    o Added code to define the environment variable INSTALL_APP_MODE
-      based on whether working in batch or interactive mode.
-    o Added support for encoded strings in steps as well as support
-      for '%n' (application's full name) and %w (working dir). Also, 
-      changed the encoding for application's name: '%a' instead of 
-      '%p'.
-    o Modified default user agent to include the URL of the
-      distribution site.
-    o Removed code that edited the software inventory and cleaned up
-      old versions as this was something probably not of general 
-      interest.
-
-25-Apr-2003, 1.02, George A. Theall
-    o Fixed glitch that prevented listing of steps of sub-applications.
-    o Improved formatting of output when listing steps.
-
-02-Apr-2003, 1.01, George A. Theall
-    o Fixed glitch with use of an uninitialized value when processing
-      postextract commands while in batch mode.
-    o Changed $app_name to name of sub-application (if it exists) when
-      decoding values with special characters.
-    o Added code to create the base directory if it doesn't already exist.
-
-21-Mar-2003, 1.00, George A. Theall
-    o Initial version.
 
 =cut
 
