@@ -16,40 +16,174 @@
 <H3>Introduction</H3>
 
 <P>This script removes much of the drudgery associated with installing
-and upgrading software.  It supports retrieving distribution files and
-verifying them as well as configuring / compiling / installing arbitrary
-software applications.  Unlike package managers such as Red Hat's rpm,
-Debian's dpkg, Sun's pkgadd, etc., <B>install-app</B> works typically
-with a application's source, giving you complete flexibility in terms of
-configuration and installation.  Indeed, the flexibility is such that
-you can even use it with your OS' package manager.</P>
+and upgrading software.  It supports retrieving distribution files as
+well as configuring / compiling / installing arbitrary software
+applications.  Unlike package managers such as Red Hat's <B>rpm</B>,
+Debian's <B>dpkg</B>, Sun's <B>pkgadd</B>, etc., <B>install-app</B>
+works typically with a application's source, giving you complete
+flexibility in terms of configuration and installation.  Indeed, the
+flexibility is such that you can even use it with your OS' package
+manager.  [Another difference <I>vis-a-vis</I> <B>install-app</B> and
+package managers is that <B>install-app</B> does not itself support
+dependencies among applications or application removals.]</P>
 
-<P>Information about software applications resides in a separate file -
-the application info file - specified by <CODE>$app_info</CODE>.  You
-must edit it and include information about each application you wish to
-manage with this script.</P>
-
-<P>You specify which applications to upgrade / install on the
-commandline; you must specify the application name as it appears in the
-application info file along with a version number.  You can specify
-multiple name / version number pairs.  <B>install-app</B> will retrieve
-the distribution file if necessary, verify it if possible, extract it,
-and then build / install it.  At each step, you will be prompted to
-continue to the next step or skip it.</P>
-
-<P><B>install-app</B> requires Perl 5 along with the following modules:</P>
+<P><B>install-app</B> requires Perl 5 along with the following
+modules:</P>
 
 <UL>
-   <LI><CODE>Carp</CODE>
-   <LI><CODE>Getopt::Long</CODE>
-   <LI><CODE>LWP</CODE>
-   <LI><CODE>Text::Wrap</CODE>
+   <LI><CODE>Carp</CODE></LI>
+   <LI><CODE>File::Find</CODE></LI>
+   <LI><CODE>Getopt::Long</CODE></LI>
+   <LI><CODE>LWP::Debug</CODE></LI>
+   <LI><CODE>LWP::UserAgent</CODE></LI>
+   <LI><CODE>Text::Wrap</CODE></LI>
+   <LI><CODE>XML::Twig</CODE></LI>
 </UL>
 
 <P>If your system does not have these modules installed already, visit
-<A HREF="http://search.cpan.org/">CPAN</A>.  Note that <CODE>LWP</CODE>
-is not included with the default Perl distribution so you may need to
-install it yourself.</P>
+<A HREF="http://search.cpan.org/">CPAN</A>.  Note that
+<CODE>LWP::Debug</CODE>, <CODE>LWP::UserAgent</CODE>, and
+<CODE>XML::Twig</CODE> are not included with the default Perl
+distribution so you may need to install them yourself.  Also note that
+<CODE>XML::Twig</CODE> itself requires the <A
+HREF="http://expat.sourceforge.net/">Expat XML parser library</A>.</P>
+
+
+<H3>Application Info Files</H3>
+
+<P>For each application you wish to support with this script, you must
+have a special file -- an <I>application info file</I> -- containing
+information about the application: where the distribution file is
+located, how to verify its integrity, how to compile the application,
+etc.  An application info file resides in the directory specified in the
+script by <CODE>$apps_dir</CODE>.</P>
+
+<P>An application info file is an XML document.  Currently, the document
+must only be <I>well-formed</I>, although at some point I hope to create
+a document type definition (DTD) with which it can be validated.  In the
+meantime, here is a table listing the elements that can appear in an
+application info file along with the meaning of each:</P>
+
+<CENTER>
+<TABLE CELLPADDING="5" CELLSPACING="0" WIDTH="90%" BORDER="1">
+   <TR>
+      <TH ALIGN="left">XPath </TH>
+      <TH ALIGN="left">Meaning<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>name</CODE> </TH>
+      <TD>Alternate name of the application.  This can be useful 
+         encoded in other elements such as <CODE>distfile</CODE>
+         when you want to give the application info file a friendlier
+         name; eg, <CODE>spamassassin</CODE> instead of 
+         <CODE>Mail::SpamAssassin</CODE>.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>url</CODE> </TH>
+      <TD>Homepage for the application.  [NB: unused by 
+         <B>install-app</B>.]<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/basedir</CODE> </TH>
+      <TD>Base directory where distribution file is saved and
+         files are extracted.  <B>install-app</B> will create it
+         if it doesn't already exist.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/workdir</CODE> </TH>
+      <TD>Work directory, created either implicitly when extracting
+         files or explicitly as part of a <CODE>postextract</CODE>
+         action.  <B>install-app</B> will change into this after 
+         extracting files and perform each step there. If a relative
+         path, it will be relative to the base directory.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/distfile</CODE> </TH>
+      <TD>Distribution filename for a specific version.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/durl</CODE> </TH>
+      <TD>URL from which the distribution file can be obtained.
+         <B>install-app</B> supports file retrievals via 
+         HTTP and FTP using <CODE>LWP</CODE>.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/verify</CODE> </TH>
+      <TD>Method used to verify contents of the distribution file.
+         Possible methods are <CODE>md5</CODE> (MD5 checksum) and 
+         <CODE>sig</CODE> (GnuPG / PGP signature). If omitted, 
+         <B>install-app</B> will not attempt to verify the
+         integrity of the distribution file.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/vurl</CODE> </TH>
+      <TD>URL used to obtain the MD5 checksum or GnuPG / PGP 
+         signature for the distribution file.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/postextract</CODE> </TH>
+      <TD>Command(s) run after extracting contents of the distribution 
+         file but before changing ownership of the working directory
+         or performing any steps.  These are passed to the shell for
+         execution. <B>Note:</B> if they exit with a non-zero return
+         code, <B>install-app</B> will regard that as a failure and 
+         abort.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/step/label</CODE> </TH>
+      <TD>Descriptive label of the action to be performed for a given
+         step.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/step/action</CODE> </TH>
+      <TD>Command(s) to be performed for a given step. These are passed
+         to the shell for execution. Generally, there will be multiple
+         steps for an application; they will be performed in the order
+         they appear in the application info file.  <B>Note:</B> if an
+         action exits with a non-zero return code, <B>install-app</B> 
+         will regard it as a failure and abort.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="left"><CODE>install/component</CODE> </TH>
+      <TD>Can hold any / all of the same elements as <CODE>install</CODE>,
+         except for <CODE>component</CODE>.  Intended for applications
+         that consist of multiple distribution files; eg, 
+         <A HREF="http://www.nessus.org/install.html">Nessus</A>.<BR></TD>
+   </TR>
+</TABLE>
+</CENTER>
+
+<P>Within an element, text can be encoded using one or more special
+strings:</P>
+
+<CENTER>
+<TABLE CELLPADDING="5" CELLSPACING="0" BORDER="1">
+   <TR>
+      <TH ALIGN="left">Encoding </TH>
+      <TH ALIGN="left">Replaced By<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="center"><CODE>%a</CODE> </TH>
+      <TD>Name of the application as specified on the commandline.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="center"><CODE>%f</CODE> </TH>
+      <TD>The text of the <CODE>distfile</CODE> element.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="center"><CODE>%n</CODE> </TH>
+      <TD>The text of the <CODE>name</CODE> element.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="center"><CODE>%v</CODE> </TH>
+      <TD>The version number specified on the commandline.<BR></TD>
+   </TR>
+   <TR>
+      <TH ALIGN="center"><CODE>%w</CODE> </TH>
+      <TD>The text of the <CODE>workdir</CODE> element.<BR></TD>
+   </TR>
+</TABLE>
+</CENTER>
 
 
 <H3>Installation</H3>
@@ -60,22 +194,38 @@ install it yourself.</P>
       <A HREF="install-app.md5">MD5 checksum</A> or, better, its
       <A HREF="install-app.asc">GPG signature</A> against
       <A HREF="/~theall/gpg.html">my current GPG key</A>.</LI>
-   <LI>Retrieve the sample application info file, <A 
-      HREF="applications">applications</A>, and save it locally, say in 
-      <CODE>/usr/local/etc</CODE>.  Edit it following the comments at the 
-      top of the file to support the applications you want to use on your 
-      particular host.</LI>
+   <LI>Create an application info file for each application you wish
+      to have <B>install-app</B> support.  Some examples are:
+      <UL>
+         <LI><A HREF="iptables.xml">iptables.xml</A>
+         <LI><A HREF="nessus.xml">nessus.xml</A>
+         <LI><A HREF="perl.xml">perl.xml</A>
+      </UL>
+      Note: these are intended as guides to help you write your own 
+      application info files. While you may choose to use them as-is
+      to install these particular applications, you may prefer to
+      use different steps or even not install the applications at all.</LI>
    <LI>Verify ownership and permissions on the script as well as
-      the application info file.</LI>
+      application info files.</LI>
    <LI>Edit the script and set <CODE>$ENV{PATH}</CODE>, 
-      <CODE>$app_info</CODE>, and <CODE>$proxy</CODE> according to your 
+      <CODE>$apps_dir</CODE>, and <CODE>$proxy</CODE> according to your 
       environment.  Also, you may wish to adjust the location of the perl 
       interpreter in the first line as well as other variable 
       initializations to suit your tastes.</LI>
+   <LI>Optionally, retrieve the stylesheet <A HREF="app.xsl">app.xsl</A>
+      for use in displaying application info files.</LI>
 </OL>
 
 
 <H3>Use</H3>
+
+<P>You specify applications to install / upgrade on the commandline as
+one or more name / version number pairs.  For each application,
+<B>install-app</B> will read the corresponding application info file and
+then use the information it obtains to retrieve the appropriate
+distribution file, verify its integrity, extract it, and configure /
+compile / install the application.  At each step, you will be prompted
+to continue to the next step or skip it.</P>
 
 <P>There are several commandline arguments you can use; some override 
 variables defined in the script itself:</P>
@@ -83,14 +233,14 @@ variables defined in the script itself:</P>
 <BLOCKQUOTE>
 <DL>
    <DT>-b, --batch</DT>
-   <DD>Don't ask any questsions. NB: you may still be prompted actually 
-      running.</DD>
+   <DD>Don't ask questions. NB:you may still be prompted by the 
+      programs you are actually running.</DD>
 
    <DT>-d, --debug</DT>
    <DD>Display debugging messages while running.  NB: installs still occur.</DD>
 
    <DT>-a, --list-apps</DT>
-   <DD>List the applications supported on this system.</DD>
+   <DD>List the applications supported on this system and exit.</DD>
 
    <DT>-l, --list-steps</DT>
    <DD>List the steps to make and install the application but don't actually 
@@ -120,12 +270,41 @@ variables defined in the script itself:</P>
 
 <P>Currently, I am not aware of any bugs in this script.</P>
 
-<P>The application info file, <CODE>$app_info</CODE>, contains arbitrary
-commands that are run as root.  Be careful about what you put in there,
-and be careful about its ownership / permissions.</P>
+<P>The application info files contain arbitrary commands that are run as
+root.  Be careful about what you put in them, and be careful about their
+ownership / permissions.</P>
 
-<P>Set <CODE>$ENV{'FTP_PASSIVE'}</CODE> below if your firewall requires
-passive mode for FTP file transfers.</P>
+<P>Make sure you set <CODE>$ENV{'FTP_PASSIVE'}</CODE> in the script if
+your firewall requires passive mode for FTP file transfers.</P>
+
+<P>You may sometimes be prompted for information while running
+<B>install-app</B>, even when using its batch option (eg,
+<CODE>-b</CODE>).  By carefully choosing the steps followed in an
+application info file, you can minimize or even eliminate the need for
+user interaction.  For instance, don't have a step that invokes
+<CODE>vi</CODE> to edit a makefile; instead, use <CODE>sed</CODE> to
+edit a it in place.  Also, note that <B>install-app</B> sets the
+environment variable <CODE>INSTALL_APP_MODE</CODE> to <CODE>batch</CODE>
+if running in batch mode so you have a step that, say, allows you to
+page through a changelog only if running interactively.</P>
+
+<P>Currently, <B>install-app</B> requires that distribution files
+be tar files compressed using <CODE>compress</CODE>, <CODE>gzip</CODE>,
+or <CODE>bzip</CODE>.
+
+<P>If you encounter a problem using <B>install-app</B>, I encourage you
+to enable debug mode (eg, add <CODE>-d</CODE> to your commandline) and
+examine the output it produces before contacting me.  Often, this will
+enable you to resolve the problem yourself.</P>
+
+
+<H3>Copyright and License</H3>
+
+<P>Copyright (c) 2003, George A. Theall.<BR>
+All rights reserved.</P>
+
+<P>This script is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.</P>
 
 
 <H3>History</H3>
@@ -137,6 +316,32 @@ passive mode for FTP file transfers.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">23-Jun-2003 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-2.00">2.00</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="install-app-2.00.md5">MD5</A> / 
+         <A HREF="install-app-2.00.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Changed major portions of code.</LI>
+         <LI>Redesigned code to read from application-specific XML files.</LI>
+         <LI>Added ability to bundle commandline options; eg, 
+            <CODE>-da</CODE> instead of <CODE>-d -a</CODE>.</LI>
+         <LI>Added code to define the environment variable 
+            <CODE>INSTALL_APP_MODE</CODE> based on whether working in 
+            batch or interactive mode.</LI>
+         <LI>Added support for encoded strings in steps as well as support 
+            for <CODE>%n</CODE> (application's full name) and 
+            <CODE>%w</CODE> (working dir). Also, changed the encoding for 
+            application's name: <CODE>%a</CODE> instead of 
+            <CODE>%p</CODE>.</LI>
+         <LI>Modified default user agent to include the URL of the
+            distribution site.</LI>
+         <LI>Removed code that edited the software inventory and cleaned up
+            old versions as this was something probably not of general 
+            interest.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">25-Apr-2003 </TH>

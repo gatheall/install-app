@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
+<?xml-stylesheet type="text/xml" href="app.xsl"?>
+
+<!--
+updated: 23-Jun-2003, George A. Theall
+-->
+
+<app>
+    <name>IPTables</name>
+    <url>http://www.netfilter.org/</url>
+
+    <install comments="Linux-specific">
+        <basedir>/usr/local/src/NETWORK</basedir>
+        <workdir>%a-%v</workdir>
+
+        <distfile>%a-%v.tar.bz2</distfile>
+        <durl>http://www.netfilter.org/files/%f</durl>
+        <verify>sig</verify>
+        <vurl>http://www.netfilter.org/files/%f.sig</vurl>
+
+        <step>
+            <label>Make</label>
+            <action>make KERNELDIR=/usr/src/linux</action>
+        </step>
+        <step>
+            <label>Install</label>
+            <action>make install KERNELDIR=/usr/src/linux</action>
+        </step>
+    </install>
+</app>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
+<?xml-stylesheet type="text/xml" href="app.xsl"?>
+
+<!--
+updated: 23-Jun-2003, George A. Theall
+-->
+
+<app>
+    <name>Perl</name>
+    <url>http://www.perl.com/</url>
+
+    <install>
+        <basedir>/usr/local/src/LANG</basedir>
+        <workdir>%a-%v</workdir>
+
+        <distfile>%a-%v.tar.gz</distfile>
+        <durl>http://www.perl.com/CPAN/src/%f</durl>
+
+        <step>
+            <label>View changelog</label>
+            <action>if [ "X${INSTALL_APP_MODE}" != "Xbatch" ]; then less Changes; fi</action>
+        </step>
+        <step>
+            <label>Clean up cruft</label>
+            <action>rm config.sh Policy.sh</action>
+        </step>
+        <step>
+            <label>Configure</label>
+            <action>./Configure</action>
+        </step>
+        <step>
+            <label>Make</label>
+            <action>make</action>
+        </step>
+        <step>
+            <label>Test</label>
+            <action>make test</action>
+        </step>
+        <step>
+            <label>Install</label>
+            <action>make install</action>
+        </step>
+        <step>
+            <label>Create header files</label>
+            <action>cd /usr/include &amp;&amp; h2ph *.h sys/*.h &amp;&amp; cd -</action>
+        </step>
+    </install>
+</app>
