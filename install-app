@@ -110,6 +110,13 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+02-Apr-2003, George A. Theall
+    o Fixed glitch with use of an uninitialized value when processing
+      postextract commands while in batch mode.
+    o Changed $app_name to name of sub-application (if it exists) when
+      decoding values with special characters.
+    o Added code to create the base directory if it doesn't already exist.
+
 21-Mar-2003, George A. Theall
     o Initial version.
 
@@ -229,6 +236,9 @@ while (@ARGV) {
                 exit 1;
             }
 
+            # Change $app_name to sub-application if it exists.
+            $app_name = $1 if ($name =~ / \/ (.+)$/);
+
             # - decode scalars with special characters
             #   nb: distfile must be handled first since it may be 
             #       used in other strings.
@@ -276,7 +286,12 @@ while (@ARGV) {
                 exit;
             }
 
-            # Change into basedir.
+            # Change into basedir, creating it as necessary.
+            unless (-d $info->{basedir}) {
+                warn "Creating " . $info->{basedir} . "!\n";
+                mkdir $info->{basedir};
+                chown $work_uid, $work_gid, $info->{basedir};
+            }
             chdir $info->{basedir} 
                 or croak "Can't chdir to $info->{basedir} - $!\n";
 
@@ -440,7 +455,7 @@ while (@ARGV) {
                         $ans = <STDIN>;
                         exit if ($ans =~ /^q$/i);
                     }
-                    unless ($ans =~ /^n$/i) {
+                    unless (defined($ans) and $ans =~ /^n$/i) {
                         system $cmd;
                         my $rc = $? >> 8;
                         croak "Postextract actions '$cmd' failed ($rc)!\n" if ($rc);
