@@ -1,0 +1,549 @@
+#!/usr/local/bin/perl -w
+
+
+=head1 NAME
+
+install-app - Install applications from source.
+
+
+=head1 SYNOPSIS
+
+  # Retrieve / build / install OpenSSL 0.9.7a.
+  install-app openssl 0.9.7a
+
+  # same as above but do it in batch.
+  install-app -b openssl 0.9.7a
+
+  # List steps involved in building / installing OpenSSL 0.9.7a.
+  install-app -l openssl 0.9.7a
+
+  # List supported applications.
+  install-app --list-apps
+
+
+=head1 DESCRIPTION
+
+This script removes much of the drudgery associated with installing and
+upgrading software.  It supports retrieving distribution files and
+verifying them as well as configuring / compiling / installing arbitrary
+software applications.  Unlike package managers such as Red Hat's rpm,
+Debian's dpkg, Sun's pkgadd, etc., B<install-app> works typically with a
+application's source, giving you complete flexibility in terms of
+configuration and installation.  Indeed, the flexibility is such that
+you can even use it with your OS' package manager. 
+
+Information about software applications resides in a separate file - the
+application info file - specified by C<$app_info>.  You must edit it and
+include information about each application you wish to manage with this
+script. 
+
+You specify which applications to upgrade / install on the commandline;
+you must specify the application name as it appears in the application
+info file along with a version number.  You can specify multiple name /
+version number pairs.  B<install-app> will retrieve the distribution
+file if necessary, verify it if possible, extract it, and then build /
+install it.  At each step, you will be prompted to continue to the next
+step or skip it. 
+
+Some of the other settings you may wish to adjust include:
+
+    Variable            Commandline         Purpose
+    n/a                 -b|--batch          Don't ask any questsions. NB:
+                                                you may still be prompted
+                                                by the programs you are
+                                                actually running.
+    $DEBUG              -d|--debug          Turn on debugging. NB: installs
+                                                still occur.
+    n/a                 -a|--list-apps      List the applications supported
+                                                on this system.
+    n/a                 -l|--list-steps     List the steps to make and
+                                                install the application but
+                                                don't actually do them.
+
+install-app requires Perl 5 along with the following modules:
+
+    C<Carp>
+    C<Getopt::Long>
+    C<LWP>
+    C<Text::Wrap>
+
+If your system does not have these modules installed already, visit CPAN
+(L<http://search.cpan.org/>).  Note that C<LWP> is not included with the
+default Perl distribution so you may need to install it yourself. 
+
+
+=head1 KNOWN BUGS AND CAVEATS
+
+Currently, I am not aware of any bugs in this script.  
+
+The application info file, C<$app_info>, contains arbitrary commands that are
+run as root.  Be careful about what you put in there, and be careful
+about its ownership / permissions. 
+
+Set C<$ENV{'FTP_PASSIVE'}> below if your firewall requires passive mode
+for FTP file transfers. 
+
+
+=head1 DIAGNOSTICS
+
+Fatal errors will be reported using croak.
+
+
+=head1 SEE ALSO
+
+L<perl(1)>.
+
+
+=head1 AUTHOR
+
+George A. Theall, E<lt>theall@tifaware.comE<gt>
+
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2003, George A. Theall.
+All rights reserved.
+
+This script is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+
+
+=head1 HISTORY
+
+21-Mar-2003, George A. Theall
+    o Initial version.
+
+=cut
+
+
+############################################################################
+# Make sure we have access to the required modules.
+require 5;
+
+use strict;
+use Carp;
+use Getopt::Long;
+use LWP::UserAgent;
+
+
+############################################################################
+# Initialize variables.
+# 
+# - these you may wish to tweak.
+delete @ENV{qw(IFS CDPATH ENV BASH_ENV)};   # Make %ENV safer
+$ENV{PATH} = '/bin:/usr/bin:/usr/local/bin';
+my $DEBUG = 0;                          # debugging messages?
+my $app_info = '/usr/local/etc/applications';   # where application information is stored
+my $proxy = '';                         # if you use a proxy for http
+
+# - these you probably don't need to muck with.
+$| = 1;
+$ENV{'FTP_PASSIVE'} = 0;                # change to 1 if passive mode needed
+my $timeout = 120;                      # timeout used w/ http GET
+my $useragent = 'install-app/1.10';     # used when requesting applications
+my $work_uid = 0;                       # uid for work files / dirs
+my $work_gid = 0;                       # gid for work files / dirs
+umask 022;
+
+
+############################################################################
+# Process commandline arguments.
+my %options = (
+    'debug'  => \$DEBUG,
+);
+GetOptions(
+    \%options,
+    'batch|b!',
+    'debug|d!',
+    'help|?!',
+    'list-apps|a!',
+    'list-steps|l!',
+);
+if ($options{help} or scalar(@ARGV) % 2) {
+    warn "Usage: $0 [-b|--batch] [-d|--debug] [-a|--list-apps] [-l|--list-steps] application1 version1 [application2 version2 ...]\n";
+    exit(9);
+}
+
+
+############################################################################
+# Get information about all applications known on this system.
+our %app_info;
+require $app_info;
+
+# List applications and exit if desired.
+if ($options{'list-apps'}) {
+    print "Known applications:\n";
+    foreach (sort keys %app_info) {
+        print "   $_\n";
+    }
+    exit;
+}
+
+
+############################################################################
+# Process rest of commandline arguments (ie, application / version pairs).
+while (@ARGV) {
+    my $app_name = shift(@ARGV);
+    my $app_vers = shift(@ARGV) || croak "Whoa -- expected a version number!\n";
+
+    croak "Don't know about application '$app_name'!\n" 
+        unless (exists $app_info{$app_name});
+
+    # Create an array of hashes with information about chosen
+    # application(s) / sub-application(s).
+    #
+    # nb: an array is needed to preserve order of sub-applications.
+    my @apps;
+    # - most are specified as hashes, just as they are in %app_info.
+    if (ref($app_info{$app_name}) eq 'HASH') {
+        push(@apps, { $app_name => $app_info{$app_name}});
+    }
+    # - some are composed of multiple sub-applications.
+    elsif (ref($app_info{$app_name}) eq 'ARRAY') {
+        foreach (@{$app_info{$app_name}}) {
+            foreach my $subapp (keys %{$_}) {
+                push(@apps, { "$app_name / $subapp" => ${$_}{$subapp}});
+            }
+        }
+    }
+    else {
+        croak "\$app_info{$app_name} must be a hash or an array!\n";
+    }
+
+    # Process chosen application(s) / sub-application(s).
+    foreach my $application (@apps) {
+        my($name, $info);
+        while (($name, $info) = each %$application) {
+            warn "debug: working on $name $app_vers.\n" if $DEBUG;
+
+            # Check for configuration problems.
+            my @config_probs;
+            foreach ('distfile', 'basedir', 'workdir', 'steps') {
+                unless (exists $info->{$_}) {
+                    push(@config_probs, "    missing '$_'.\n");
+                }
+            }
+            if (@config_probs) {
+                warn "Invalid configuration for $name:\n",
+                    join("\n", @config_probs), "\n";
+                exit 1;
+            }
+
+            # - decode scalars with special characters
+            #   nb: distfile must be handled first since it may be 
+            #       used in other strings.
+            foreach my $setting ('distfile', grep(!/distfile/, keys %$info)) {
+                next if (ref($info->{$setting}));
+                my $s = $info->{$setting};
+                warn "debug:   \$app_info{$name}{$setting} before >>$s<<.\n" if $DEBUG;
+                if ($s =~ /%/) {
+                    $s =~ s/%f/$info->{distfile}/g;
+                    $s =~ s/%p/$app_name/g;
+                    $s =~ s/%v/$app_vers/g;
+                }
+                warn "debug:   \$app_info{$name}{$setting} after  >>$s<<.\n" if $DEBUG;
+                $info->{$setting} = $s;
+            }
+
+            # List steps and exit if desired.
+            if ($options{'list-steps'}) {
+                my $i = 0;
+                print "Steps to install $name:\n\n";
+                foreach my $step (@{$info->{steps}}) {
+                    my($desc, $cmd);
+                    while (($desc, $cmd) = each %$step) {
+                        printf "%3d) %s by running '%s'.\n", ++$i, $desc, $cmd;
+                    }
+                }
+                if (exists $info->{url}) {
+                    use Text::Wrap;
+                    $Text::Wrap::columns = 60;
+                    my $msg = "\nNote: $info->{distfile} will be retrieved from $info->{url} as necessary; ";
+                    if ($info->{verify}) {
+                        $msg .= "it will be verified using a ";
+                        $msg .= "MD5 checksum" if ($info->{verify} eq 'md5');
+                        $msg .= "GnuPG / PGP signature" if ($info->{verify} eq 'sig');
+                        if (exists $info->{vurl}) {
+                            $msg .= " from $info->{vurl}";
+                        }
+                        $msg .= '.';
+                    }
+                    else {
+                        $msg .= "no method is known for verifying its contents.";
+                    }
+                    print wrap('', '', $msg), "\n";
+                }
+                exit;
+            }
+
+            # Change into basedir.
+            chdir $info->{basedir} 
+                or croak "Can't chdir to $info->{basedir} - $!\n";
+
+            # Retrieve distribution file if it's not yet available.
+            my $distfile = $info->{distfile};
+            if (! -f $distfile) {
+                warn "debug:   retrieving distribution file.\n" if $DEBUG;
+                my $url;
+                if (!($url = $info->{url})) {
+                    croak "$distfile not found in $info->{basedir} and url not configured!\n";
+                }
+                if ($_ = &retrieve_URL($url, $distfile)) {
+                    croak "Can't retrieve '$url' - $_!\n";
+                }
+            }
+
+            # Verify contents of distribution file, if possible.
+            if (exists $info->{verify} and $info->{verify}) {
+                warn "debug:   verifying distribution file.\n" if $DEBUG;
+                my $meth = $info->{verify};
+                if ($meth eq 'md5') {
+                    my $md5 = $distfile . '.md5';
+
+                    # if checksum doesn't exist, try to retrieve it.
+                    if (!-f $md5) {
+                        warn "debug:     $md5 does not exist locally.\n" if $DEBUG;
+                        if (exists $info->{vurl}) {
+                            if ($_ = &retrieve_URL($info->{vurl}, $md5)) {
+                                # nb: give user chance to continue.
+                                warn "Note: can't retrieve '$info->{vurl}' - $_.\n";
+                            }
+                            # Reformat if necessary.
+                            my($line, $nlines, $reformat);
+                            open(MD5, $md5) or croak "Can't read $md5 - $!\n";
+                            while (<MD5>) {
+                                chomp;
+                                $nlines++;
+                                next unless (/$distfile/ and /\b([a-f0-9]{32})\b/);
+                                if (/^$1\s{2,}$distfile$/) {
+                                    $line = $_;
+                                } else {
+                                    $line = "$1  $distfile";
+                                    $reformat = 1;
+                                }
+                            }
+                            close(MD5);
+                            if (($reformat or $nlines > 1) and $line) {
+                                warn "debug:     reformatting $md5.\n" if $DEBUG;
+                                open(MD5, ">$md5") or croak "Can't write to $md5 - $!\n";
+                                print MD5 "$line\n";
+                                close(MD5);
+                            }
+                        }
+                        # if retrieval not possible or failed, prompt user for it 
+                        # unless in batch mode.
+                        if (!-f $md5) {
+                            if ($options{batch}) {
+                                croak "Can't validate $distfile!\n";
+                            }
+                            print STDERR "\nEnter MD5 checksum for $distfile: ";
+                            my $ans = <STDIN>;
+                            chomp $ans;
+                            open(MD5, ">$md5") or croak "Can't write to $md5 - $!\n";
+                            print MD5 "$ans  $distfile\n";
+                            close(MD5);
+                        }
+                    }
+
+                    # Actually validate the distribution file.
+                    system "md5sum", "--status", "--check", $md5;
+                    my $rc = $? >> 8;
+                    if ($rc) {
+                        croak "Invalid MD5 checksum for $distfile ($rc)!\n";
+                    }
+                }
+                elsif ($meth eq 'sig') {
+                    my $sig = $distfile . '.asc';
+
+                    # if checksum doesn't exist, try to retrieve it.
+                    if (!-f $sig) {
+                        warn "debug:     $sig does not exist locally.\n" if $DEBUG;
+                        if (exists $info->{vurl}) {
+                            if ($_ = &retrieve_URL($info->{vurl}, $sig)) {
+                                # nb: give user chance to continue.
+                                warn "Note: can't retrieve '$info->{vurl}' - $_.\n";
+                            }
+                        }
+                        # if retrieval not possible or failed, prompt user for it 
+                        # unless in batch mode.
+                        if (!-f $sig) {
+                            if ($options{batch}) {
+                                croak "Can't validate $distfile!\n";
+                            }
+                            print STDERR "Enter GnuPG / PGP signature for $distfile: ";
+                            my $ans = <STDIN>;
+                            chomp $ans;
+                            open(SIG, ">$sig") or croak "Can't write to $sig - $!\n";
+                            print SIG "$sig  $distfile\n";
+                            close(SIG);
+                        }
+                    }
+
+                    # Actually validate the distribution file.
+                    system "gpg", "--quiet", "--verify", $sig, $distfile;
+                    my $rc = $? >> 8;
+                    if ($rc) {
+                        croak "Invalid signature for $distfile ($rc)!\n";
+                    }
+                    print "\n";
+                }
+                else {
+                    croak "Unknown verification method '$meth'!\n";
+                }
+            }
+            else {
+                warn "Note: no method known for verifing contents of $distfile.\n";
+            }
+
+            # Extract contents of distribution file.
+            if (-d $info->{workdir}) {
+                warn "Note: $info->{workdir} already exists; $distfile not extracted.\n";
+            }
+            else {
+                warn "debug:   extracting distribution file.\n" if $DEBUG;
+                my $uncompress;
+                if ($distfile =~ /\.(tar\.gz|tgz|Z)$/) {
+                    $uncompress = "gzcat";
+                }
+                elsif ($distfile =~ /bz2$/) {
+                    $uncompress = "bzcat";
+                }
+                else {
+                    croak "Don't know how to extract $distfile!\n";
+                }
+                my $cmd = "$uncompress $distfile | tar tvf -";
+                open(CMD, "$cmd 2>&1 |") or croak "Can't run '$cmd' - $!\n";
+                my @files;
+                while (<CMD>) {
+                    push(@files, $_);
+                }
+                close(CMD);
+                print "Contents of $distfile:\n",
+                    join("", @files), 
+                    "\n";
+                unless ($options{batch}) {
+                    print STDERR "Extract files (Y/n)? ";
+                    my $ans = <STDIN>;
+                    exit if ($ans =~ /^n$/i);
+                }
+                system "$uncompress $distfile | tar xf -";
+                my $rc = $? >> 8;
+                croak "Can't extract contents of $distfile ($rc)!\n" if ($rc);
+
+                # Do any postextract actions.
+                if (exists $info->{postextract}) {
+                    my $cmd = $info->{postextract};
+                    my $ans;
+                    warn "debug:   doing postextract actions '$cmd'.\n" if $DEBUG;
+                    unless ($options{batch}) {
+                        print STDERR "Run '$cmd' (Y/n/q)? ";
+                        $ans = <STDIN>;
+                        exit if ($ans =~ /^q$/i);
+                    }
+                    unless ($ans =~ /^n$/i) {
+                        system $cmd;
+                        my $rc = $? >> 8;
+                        croak "Postextract actions '$cmd' failed ($rc)!\n" if ($rc);
+                    }
+                }
+
+                warn "debug:   changing ownership of $info->{workdir}.\n" if $DEBUG;
+                system "chown", "-R", "$work_uid:$work_gid", $info->{workdir};
+                $rc = $? >> 8;
+                croak "Can't change ownership of $info->{workdir} ($rc)!\n" if ($rc);
+            }
+
+            # Change into working directory.
+            chdir $info->{workdir} or croak "Can't chdir to $info->{workdir} - $!\n";
+
+            # Iterate over each step.
+            foreach my $step (@{$info->{steps}}) {
+                my($desc, $cmd);
+                while (($desc, $cmd) = each %$step) {
+                    warn "debug:   running '$cmd' ($desc).\n" if $DEBUG;
+                    unless ($options{batch}) {
+                        print STDERR "$desc (Y/n/q)? ";
+                        my $ans = <STDIN>;
+                        next if ($ans =~ /^n$/i);
+                        exit if ($ans =~ /^q$/i);
+                    }
+                    system $cmd;
+                    my $rc = $? >> 8;
+                    croak "$desc failed ($rc)!\n" if ($rc);
+                }
+            }
+
+            chdir "..";
+
+            # Update software inventory and clean up old versions.
+            unless ($options{batch}) {
+                print STDERR "Edit software inventory (Y/n/q)? ";
+                my $ans = <STDIN>;
+                next if ($ans =~ /^n$/i);
+                exit if ($ans =~ /^q$/i);
+            }
+            my $cmd = 'uemacs /usr/local/etc/software-inventory';
+            system $cmd;
+            my $rc = $? >> 8;
+            croak "'$cmd' failed ($rc)!\n" if ($rc);
+
+            warn "debug: cleaning up previous install(s).\n" if $DEBUG;
+            opendir(DIR, ".") or croak "Can't read current directory - $!\n";
+            my @oldfiles = grep(/^$name/i && !/$app_vers/, readdir(DIR));
+            closedir(DIR);
+            if (@oldfiles) {
+                my $cmd = "mv " . join(" ", @oldfiles) . " /tmp";
+                unless ($options{batch}) {
+                    print STDERR "Run '$cmd' (Y/n/q)? ";
+                    my $ans = <STDIN>;
+                    next if ($ans =~ /^n$/i);
+                    exit if ($ans =~ /^q$/i);
+                }
+                system $cmd;
+                my $rc = $? >> 8;
+                croak "'$cmd' failed ($rc)!\n" if ($rc);
+            }
+            print "Install of $name $app_vers finished.\n";
+        }
+    }
+}
+
+
+############################################################################
+# Retrieve $url and save it as $url.
+#    Returns an empty string on success or an error message on failure.
+sub retrieve_URL {
+    my($url, $file) = @_;
+
+    if ($DEBUG) {
+        print STDERR "debug: retrieving $url in retrieve_URL.\n";
+        require LWP::Debug; import LWP::Debug qw(+);
+    }
+
+    my $ua = LWP::UserAgent->new(
+        agent => $useragent,
+        timeout => $timeout,
+    );
+    if (defined($proxy)) {
+        $ua->proxy('http', $proxy);
+    }
+    my $response = $ua->get(
+        $url,
+        ':content_file' => $file,
+    );
+    # Retry FTP retrievals in passive mode if it looks like that will help.
+    if ($response->code == 400 and $url =~ /^ftp:/ and $ENV{'FTP_PASSIVE'} == 0 and $response->message =~ /502/) {
+        print STDERR "debug: retrying transfer with passive mode in retrieve_URL.\n" if $DEBUG;
+        $ENV{'FTP_PASSIVE'} = 1;
+        $response = $ua->get(
+            $url,
+            ':content_file' => $file,
+        );
+        $ENV{'FTP_PASSIVE'} = 0;
+    }
+    unless ($response->is_success) {
+        return $response->status_line;
+    }
+    print STDERR "debug: saved contents as '$file' in retrieve_URL.\n" if $DEBUG;
+    return "";
+}

@@ -1,0 +1,145 @@
+# Note: this file collects information about assorted applications whose
+#   installation is managed by install-app. An application can either
+#   be a hash or an array of hashes of sub-applications.  Keys are the
+#   names of applications / sub-applicationss and values are again hashes
+#   with key meanings as follows:
+#
+#       basedir     - directory in which 'distfile' will stored (required).
+#       workdir     - directory under which application will be built
+#                     (required). nb: treated as relative to 'basedir'
+#                     unless it starts with a '/'.
+#       distfile    - distribution filename (required).
+#       url         - URL used to obtain 'distfile'.
+#       verify      - method used to verify contents of 'distfile'. Possible
+#                     values are: empty (no method known), 'md5' (MD5
+#                     checksum, and 'sig' (GnuPG / PGP signature).
+#       vurl        - URL used to obtain MD5 checksum or GnuPG / PGP signature.
+#       postextract - commands to be run by shell before install begins.
+#       steps       - an array of hashes with the steps to be performed;
+#                     each key is a description of the step and each value
+#                     is the command(s) to be run (required).
+#
+#   Values may contain one or more special characters:
+#
+#       %f      - expanded to value of distfile.
+#       %p      - expanded to application/sub-application name.
+#       %v      - expanded to application version.
+#
+
+%app_info = (
+    gnupg => {
+        basedir     => '/usr/local/src/SECURITY',
+        workdir     => '%p-%v',
+        distfile    => '%p-%v.tar.bz2',
+        url         => 'http://ftp.gnupg.org/gcrypt/gnupg/%f',
+        verify      => 'sig',
+        vurl        => 'http://ftp.gnupg.org/gcrypt/gnupg/%f.sig',
+        postextract => 'chmod -R go-ws %p-%v && mkdir %p-%v-obj',
+        steps       => [
+            {
+                'View changelog' => 'less ChangeLog',
+            },
+            {
+                # nb: the option is to use /dev/random for entropy.
+                'Configure' => './configure --enable-static-rnd=linux',
+            },
+            {
+                'Make' => 'make',
+            },
+            {
+                'Test' => 'make check',
+            },
+            {
+                'Install' => 'make install',
+            },
+        ],
+    },
+    nessus => [
+        {
+            'nessus-libraries' => {
+                basedir     => '/usr/local/src/SECURITY',
+                workdir     => '%p',
+                distfile    => '%p-%v.tar.gz',
+                url         => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/%f',
+                verify      => 'md5',
+                vurl        => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/MD5',
+                steps       => [
+                    {
+                        'Configure' => './configure  --enable-cipher',
+                    },
+                    {
+                        'Make' => 'make',
+                    },
+                    {
+                        'Install' => 'make install',
+                    }
+                ],
+            },
+        },
+        {
+            libnasl => {
+                basedir     => '/usr/local/src/SECURITY',
+                workdir     => '%p',
+                distfile    => '%p-%v.tar.gz',
+                url         => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/%f',
+                verify      => 'md5',
+                vurl        => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/MD5',
+                steps       => [
+                    {
+                        'Configure' => './configure',
+                    },
+                    {
+                        'Make' => 'make',
+                    },
+                    {
+                        'Install' => 'make install',
+                    },
+                ],
+            },
+        },
+        {
+            'nessus-core' => {
+                basedir     => '/usr/local/src/SECURITY',
+                workdir     => '%p',
+                distfile    => '%p-%v.tar.gz',
+                url         => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/%f',
+                verify      => 'md5',
+                vurl        => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/MD5',
+                steps       => [
+                    {
+                        'Configure' => './configure  --enable-tcpwrappers --enable-save-kb --enable-save-sessions',
+                    },
+                    {
+                        'Make' => 'make',
+                    },
+                    {
+                        'Install' => 'make install',
+                    },
+                ],
+            },
+        },
+        {
+            'nessus-plugins' => {
+                basedir     => '/usr/local/src/SECURITY',
+                workdir     => '%p',
+                distfile    => '%p-%v.tar.gz',
+                url         => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/%f',
+                verify      => 'md5',
+                vurl        => 'ftp://ftp.nessus.org/pub/nessus/nessus-%v/src/MD5',
+                steps       => [
+                    {
+                        'Configure' => './configure',
+                    },
+                    {
+                        'Make' => 'make',
+                    },
+                    {
+                        'Install' => 'make install',
+                    },
+                ],
+            },
+        },
+    ],
+);
+
+1;
