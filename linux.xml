@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
+<?xml-stylesheet type="text/xml" href="apps.xsl"?>
+
+<!-- $Id$ -->
+
+<app>
+    <name>linux</name>
+    <url>http://www.linux.org/</url>
+
+    <install>
+        <basedir>/usr/local/src/OS</basedir>
+        <workdir>/usr/src/linux</workdir>
+
+        <distfile>%a-%v.tar.bz2</distfile>
+        <durl>http://www.kernel.org/pub/linux/kernel/v2.4/%f</durl>
+        <verify>sig</verify>
+        <vurl>http://www.kernel.org/pub/linux/kernel/v2.4/%f.sign</vurl>
+
+        <postextract>rm %w &amp;&amp; ln -s /usr/local/src/OS/%a-%v %w</postextract>
+
+        <step>
+            <label>View changelog</label>
+            <action>if [ "X${INSTALL_APP_MODE}" != "Xbatch" ]; then less Documentation/Changes; fi</action>
+        </step>
+        <step>
+            <label>Clean up cruft</label>
+            <action>make mrproper</action>
+        </step>
+        <step>
+            <label>Configure</label>
+            <action>cp /usr/local/src/OS/.config . &amp;&amp; make menuconfig</action>
+        </step>
+        <step>
+            <label>Update /etc/lilo.conf</label>
+            <action>uemacs /etc/lilo.conf</action>
+        </step>
+        <step>
+            <label>Make</label>
+            <action>make dep &amp;&amp; make bzImage &amp;&amp; make modules</action>
+        </step>
+        <step>
+            <label>Install</label>
+            <action>INSTALL_PATH=/boot make install &amp;&amp; INSTALL_PATH=/boot make modules_install &amp;&amp; /sbin/lilo</action>
+        </step>
+    </install>
+</app>
