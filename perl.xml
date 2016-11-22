@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
 <?xml-stylesheet type="text/xml" href="app.xsl"?>
 
-<!-- $Id$ -->
-
 <app>
     <name>Perl</name>
     <url>http://www.perl.com/</url>
