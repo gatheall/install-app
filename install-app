@@ -5,12 +5,10 @@
 #
 # Written by George A. Theall, theall@tifaware.com
 #
-# Copyright (c) 2003 - 2004, George A. Theall. All rights reserved.
+# Copyright (c) 2003-2016, George A. Theall. All rights reserved.
 #
 # This module is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-#
-# $Id$
 # ---------------------------------------------------------------------
 
 
@@ -130,8 +128,8 @@ Fatal errors will be reported using croak.
 
 =head1 SEE ALSO
 
-L<http://www.tifaware.com/perl/lsappi/>,
-L<http://www.tifaware.com/perl/install-app/>,
+L<https://github.com/gatheall/lsappi>,
+L<https://github.com/gatheall/install-app>,
 
 =cut
 
@@ -167,8 +165,7 @@ my $proxy = '';
 $| = 1;
 $ENV{'FTP_PASSIVE'} = 0;                # change to 1 if passive mode needed
 my $timeout = 120;                      # timeout used w/ http GET
-my $useragent = 'install-app/2.21' .    # used when requesting applications
-                    ' (http://www.tifaware.com/perl/install-app/)';
+my $useragent = 'install-app (https://github.com/gatheall/install-app)';
 my $work_uid = 0;                       # uid for work files / dirs
 my $work_gid = 0;                       # gid for work files / dirs
 umask 022;
