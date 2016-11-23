@@ -1,4 +1,4 @@
-# update-blocklist
+# install-app
 
 A handy utility for installing and upgrading software, whether compiling from source or using a package manager.
 
