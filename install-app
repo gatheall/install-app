@@ -655,10 +655,10 @@ while (@ARGV) {
             warn "debug:     extracting distribution file.\n" if $DEBUG;
             my $uncompress;
             if ($distfile =~ /\.(tar\.gz|tgz|Z)$/) {
-                $uncompress = "gzcat";
+                $uncompress = "gunzip -c";
             }
             elsif ($distfile =~ /bz2$/) {
-                $uncompress = "bzcat";
+                $uncompress = "bunzip2 -c";
             }
             else {
                 croak "Don't know how to extract $distfile!\n";
