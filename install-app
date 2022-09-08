@@ -372,6 +372,8 @@ while (@ARGV) {
                 if ($info->{verify}) {
                     $msg .= "it will be verified using a ";
                     $msg .= "MD5 checksum" if ($info->{verify} eq 'md5');
+                    $msg .= "SHA1 checksum" if ($info->{verify} eq 'sha1');
+                    $msg .= "SHA256 checksum" if ($info->{verify} eq 'sha256');
                     $msg .= "GnuPG / PGP signature" if ($info->{verify} eq 'sig');
                     if (exists $info->{vurl}) {
                         $msg .= " from $info->{vurl}";
@@ -466,6 +468,118 @@ while (@ARGV) {
                 my $rc = $? >> 8;
                 if ($rc) {
                     croak "Invalid MD5 checksum for $distfile ($rc)!\n";
+                }
+            }
+            elsif ($meth eq 'sha1') {
+                my $chksum = $distfile . '.sha1';
+
+                # if checksum doesn't exist, try to retrieve it.
+                if (!-f $chksum) {
+                    warn "debug:       $chksum does not exist locally.\n" if $DEBUG;
+                    if (exists $info->{vurl}) {
+                        if ($_ = retrieve_URL($info->{vurl}, $chksum)) {
+                            # nb: give user chance to continue.
+                            warn "Note: can't retrieve '$info->{vurl}' - $_.\n";
+                        }
+                        # Reformat if necessary.
+                        my($line, $nlines, $reformat);
+                        open(CHKSUM, $chksum) or croak "Can't read $chksum - $!\n";
+                        while (<CHKSUM>) {
+                            chomp;
+                            $nlines++;
+                            next unless (/^([a-f0-9]{40})\b/);
+                            if (/^$1\s{2,}$distfile$/) {
+                                $line = $_;
+                            } else {
+                                warn "debug:       need to reformat $chksum.\n" if $DEBUG;
+                                $line = "$1  $distfile";
+                                $reformat = 1;
+                            }
+                        }
+                        close(CHKSUM);
+                        if (($reformat or $nlines > 1) and $line) {
+                            warn "debug:       reformatting $chksum.\n" if $DEBUG;
+                            open(CHKSUM, ">$chksum") or croak "Can't write to $chksum - $!\n";
+                            print CHKSUM "$line\n";
+                            close(CHKSUM);
+                        }
+                    }
+                    # if retrieval not possible or failed, prompt user for it 
+                    # unless in batch mode.
+                    if (!-f $chksum) {
+                        if ($options{batch}) {
+                            croak "Can't validate $distfile!\n";
+                        }
+                        print STDERR "\nEnter SHA1 checksum for $distfile: ";
+                        my $ans = <STDIN>;
+                        chomp $ans;
+                        open(CHKSUM, ">$chksum") or croak "Can't write to $chksum - $!\n";
+                        print CHKSUM "$ans  $distfile\n";
+                        close(CHKSUM);
+                    }
+                }
+
+                # Actually validate the distribution file.
+                system "sha1sum", "--status", "--check", $chksum;
+                my $rc = $? >> 8;
+                if ($rc) {
+                    croak "Invalid SHA1 checksum for $distfile ($rc)!\n";
+                }
+            }
+            elsif ($meth eq 'sha256') {
+                my $chksum = $distfile . '.sha256';
+
+                # if checksum doesn't exist, try to retrieve it.
+                if (!-f $chksum) {
+                    warn "debug:       $chksum does not exist locally.\n" if $DEBUG;
+                    if (exists $info->{vurl}) {
+                        if ($_ = retrieve_URL($info->{vurl}, $chksum)) {
+                            # nb: give user chance to continue.
+                            warn "Note: can't retrieve '$info->{vurl}' - $_.\n";
+                        }
+                        # Reformat if necessary.
+                        my($line, $nlines, $reformat);
+                        open(CHKSUM, $chksum) or croak "Can't read $chksum - $!\n";
+                        while (<CHKSUM>) {
+                            chomp;
+                            $nlines++;
+                            next unless (/^([a-f0-9]{64})\b/);
+                            if (/^$1\s{2,}$distfile$/) {
+                                $line = $_;
+                            } else {
+                                warn "debug:       need to reformat $chksum.\n" if $DEBUG;
+                                $line = "$1  $distfile";
+                                $reformat = 1;
+                            }
+                        }
+                        close(CHKSUM);
+                        if (($reformat or $nlines > 1) and $line) {
+                            warn "debug:       reformatting $chksum.\n" if $DEBUG;
+                            open(CHKSUM, ">$chksum") or croak "Can't write to $chksum - $!\n";
+                            print CHKSUM "$line\n";
+                            close(CHKSUM);
+                        }
+                    }
+                    # if retrieval not possible or failed, prompt user for it 
+                    # unless in batch mode.
+                    if (!-f $chksum) {
+                        if ($options{batch}) {
+                            croak "Can't validate $distfile!\n";
+                        }
+                        print STDERR "\nEnter SHA256 checksum for $distfile: ";
+                        my $ans = <STDIN>;
+                        chomp $ans;
+                        open(CHKSUM, ">$chksum") or croak "Can't write to $chksum - $!\n";
+                        print CHKSUM "$ans  $distfile\n";
+                        close(CHKSUM);
+                    }
+                }
+
+                # Actually validate the distribution file.
+                system "sha256sum", "--status", "--check", $chksum;
+                my $rc = $? >> 8;
+                if ($rc) {
+                    croak "Invalid SHA256 checksum for $distfile ($rc)!\n";
                 }
             }
             elsif ($meth eq 'sig') {
