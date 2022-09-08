@@ -33,8 +33,8 @@ An application info file is an XML document.  Currently, the document must only 
 | `install/workdir` | Work directory, created either implicitly when extracting files or explicitly as part of a `postextract` action.  **install-app** will change into this after extracting files and perform each step there. If a relative path, it will be relative to the base directory. |
 | `install/distfile` | Distribution filename for a specific version. |
 | `install/durl` | URL from which the distribution file can be obtained. **install-app** supports file retrievals via HTTP and FTP using `LWP`. |
-| `install/verify` | Method used to verify contents of the distribution file. Possible methods are `md5` (MD5 checksum) and `sig` (GnuPG / PGP signature). If omitted, **install-app** will not attempt to verify the integrity of the distribution file. |
-| `install/vurl` | URL used to obtain the MD5 checksum or GnuPG / PGP signature for the distribution file. |
+| `install/verify` | Method used to verify contents of the distribution file. Possible methods are `md5` (MD5 checksum), `sha1` (SHA1 checksum), `sha256` (SHA256 checksum), and `sig` (GnuPG / PGP signature). If omitted, **install-app** will not attempt to verify the integrity of the distribution file. |
+| `install/vurl` | URL used to obtain the MD5/SHA1/SHA256 checksum or GnuPG / PGP signature for the distribution file. |
 | `install/preextract` | Command(s) run before extracting contents of the distribution file.  These are passed to the shell for execution. **Note:** if they exit with a non-zero return code, **install-app** will regard that as a failure and abort. |
 | `install/postextract` | Command(s) run after extracting contents of the distribution file but before changing ownership of the working directory or performing any steps.  These are passed to the shell for execution. **Note:** if they exit with a non-zero return code, **install-app** will regard that as a failure and abort. |
 | `install/step/label` | Descriptive label of the action to be performed for a given step. |
@@ -103,7 +103,7 @@ If you encounter a problem using **install-app**, I encourage you to enable debu
 
 ## Copyright and License
 
-Copyright (c) 2003-2016, George A.  Theall.
+Copyright (c) 2003-2022, George A.  Theall.
 All rights reserved.
 
 This script is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
